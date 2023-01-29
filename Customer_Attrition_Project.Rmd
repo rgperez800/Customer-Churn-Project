@@ -1,0 +1,1263 @@
+---
+title: "Credit Card Customer Churn Prediction and Exploratory Data Analysis"
+subtitle: "Predicting Churn of Credit Card Customers of a Bank Using Machine Learning Models"
+author: "Reynaldo Perez"
+date: "University Of California, Santa Barbara - Fall 2022"
+output:
+  html_document:
+    df_print: paged
+    code_folding: show
+    toc: TRUE
+    toc_float: TRUE
+  word_document: default
+  pdf_document: default
+  number_sections: True
+---
+
+
+```{r setup, echo=FALSE}
+library(knitr)
+# Set global chunk options: images will be 7x5 inches
+knitr::opts_chunk$set(fig.width=7, fig.height=5)
+options(digits = 4)
+
+#  Indent r code as formatted text
+indent1 = '    '
+indent2 = '        '
+indent3 = '            '
+```
+
+![](/Users/reynaldoperez/Downloads/1*kU_mPtwcjfEUSkSflUikxw.jpeg)
+
+# Introduction
+
+The purpose of this project is to use predictive modeling in order to predict customer churn, also known as customer attrition. Specifically, we aim to predict which customers of a bank will leave their credit card services. In addition, we will be performing exploratory data analysis in order to discover relationships with customer churn and visualize the data.
+
+
+## What is Customer Churn?
+
+Customer churn, also known as customer attrition, is the loss of customers. For a business, when a customer churns, the customer chooses to stop using the business's products and/or services. In other words, the customer no longer interacts with the business. This of course, is tied directly to the amount of revenue the business gains.
+
+Businesses measure churn as a percentage of customers lost, otherwise known as churn rate. Usually, this metric is tracked monthly and reported by the end of each month. It is important to note that churn rates vary by industry, as they are dependent on the type of market the company is in. As one could imagine, churn rate is a critical metric for businesses with subscription-based models, such as Netflix or Spotify. 
+
+## Why Does Customer Churn Matter?
+
+Naturally, customer churn is inevitable, as there are customers who are going to leave or stop using an entity's products anyway. However, it is a fact that [it costs more obtain to new customers than it is to maintain existing customers](https://media.bain.com/Images/Value_online_customer_loyalty_you_capture.pdf). The reason for this is because existing customers are likely to spend more on a company's services or products. Therefore, if a company attempts to retain its existing customers, it will spend less money on the operating costs of having to acquire new customers. Furthermore, it is less time consuming to convince an existing customer to stay with the company than it is to convince someone that is not associated with the company. 
+
+Not to mention, reducing customer churn could add revenue to a business. A small churn rate could be an indicator for future growth. If a company is considering on adding new products or services in the future, the ones who are most likely to purchase them are existing customers, as they would already be familiar with the company's brand. Plus, satisfied customers can positively impact a company's brand!
+
+Bottom line is, customer churn rate is very important, especially if the rate is high or increasing. This is why it is helpful to build a predictive model of churn in order to assess which customers will leave, and take action based off the learned information and predictions. 
+
+
+
+
+
+
+
+# Exploratory Data Analysis
+
+Before we begin building our machine learning model, it is important to perform exploratory data analysis. Most of the time when we load raw data, it needs to be pre-processed before application. This means some data need to be cleaned or wrangled before using it for exploratory data analysis and model building. In this case, we need to clean our data, as it contains unnecessary variables and observations. We also have categorical predictors, and those need to be factored. Afterwards, we can use the cleansed data for data visualization and analysis, which we will perform in this section. 
+
+## Loading Libraries and Data
+
+The dataset I will be working on was acquired from [Kaggle](https://www.kaggle.com/datasets/sakshigoyal7/credit-card-customers?datasetId=982921&sortBy=voteCount&sort=votes) through a data analytics company that provides learning resources, named [Analyttica](https://analyttica.com). This dataset was most likely generated for learning purposes, as finding churn data based off real business entities is incredibly difficult. Most businesses prefer to keep this data private. However, this dataset should provide good practice for modeling churn, as it resembles real-life churn data.
+
+From the description on Kaggle, this dataset explores customer churn based off a bank that provides credit card services. The manager at this bank notices an increasing amount of customers leaving the bank's credit card services. As a result, they would like to predict who is going to churn in order to reach out to those customers and convince them to stay. 
+
+This dataset contains around 10,000 observations and 23 variables. This can be viewed on [Kaggle](https://www.kaggle.com/datasets/sakshigoyal7/credit-card-customers?datasetId=982921&sortBy=voteCount&sort=votes), but the key ones I'll be using for the true data include:
+
+
+* `Attrition_Flag` - Customer activity variable. If the account is closed then 1, else 0
+* `Customer_Age` - Demographic variable. Customer's age in years
+* `Gender` - Demographic variable. M = Male and F = Female
+* `Dependent_count` - Demographic variable. Number of dependents
+* `Education_Level` - Demographic. Education qualification of the account holder (example: high school, college graduate, etc.)
+* `Marital_Status` - Demographic variable. Married, Single, Unknown
+* `Income_Category` - Demographic variable. Annual Income Category of the account holder ($\lt \$40$K, $\$40$K - \$60K$, $\$60$K - $\$80$K, $\$80$K-$\$120$K, Unknown)
+* `Card_Category` - Product variable. Type of card (Blue, Silver, Gold, Platinum)
+* `Months_on_book` - Months on book (time of relationship)
+* `Total_Relationship_Count` - Total number of products held by the customer
+* `Months_inactive_12_mon` - Number of months inactive in the last 12 months
+* `Contacts_Count_12_mon` - Number of contacts in the last 12 months
+* `Credit_Limit` - Credit limit on the credit card
+* `Total_Revolving_Bal` - Total revolving balance on the credit card
+* `Avg_Open_To_Buy` - Open to buy credit line (average of last 12 months)
+* `Total_Amt_Chng_Q4_Q1` - Change in transaction amount (Q4 over Q1)
+* `Total_Trans_Amt` - Total transaction amount (last 12 months)
+* `Total_Trans_Ct` - Total transaction count (last 12 months)
+* `Total_Ct_Chng_Q4_Q1` - Change in transaction count (Q4 over Q1)
+* `Avg_Utilization_Ratio` - Average card utilization ratio
+
+```{r, echo='hide', collapse=TRUE, results=FALSE, message = FALSE, warning=FALSE, class.source = 'fold-hide'}
+# Load packages
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(MASS)
+library(discrim)
+library(corrr)
+library(corrplot)
+library(klaR)
+library(ggplot2)
+library(janitor)
+library(klaR)
+library(glmnet)
+library(xgboost)
+library(randomForest)
+library(rpart)
+library(themis)
+library(vip)
+library(kernlab)
+
+# Set seed, not necessary right now though
+set.seed(1115)
+
+# Load raw data
+churn <- read.csv("/Users/reynaldoperez/Downloads/Customer_Attrition_Proj/BankChurners.csv")
+```
+
+
+
+
+## Data Cleaning and Simple Analysis
+
+We will perform a couple of cleaning steps in order to ensure our data is tidy. Afterwards, we will conduct a simple analysis of the data.
+
+First, let us check the number of observations and variables.
+
+```{r echo=T,results=T}
+# Check the number of rows and columns
+dim(churn)
+```
+
+We have 10127 observations and 23 variables. However, we will drop the following features, as they are unnecessary for our predictive model. 
+
+* `CLIENTNUM` - Client number. Unique identifier for the customer holding the account
+* `Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_1` - result of another analysis using Naive Bayes
+* `Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_2` - result of another analysis using Naive Bayes
+
+
+```{r}
+# Remove unnecessary features
+churn <- subset(churn, select = -1)
+churn <- subset(churn, select = -c(21,22))
+```
+
+
+We want clean names. In other words, we want our variable names to be all lowercase letters. This would allow us to handle our variable names easier. 
+
+```{r}
+churn <- churn %>%
+  clean_names()
+```
+
+Now, we will check for any missing values.
+
+```{r}
+sum(is.na(churn))
+```
+
+
+We have no missing values! However, upon observing the dataset, there are three variables with observations `Unknown`. These observations do not provide us with any information. Hence, I am thinking of turning the `Unknown` observations into `NA` values and dropping them, but first, let's see how many `Unknown` observations there are in our variables. 
+
+```{r}
+sum(colSums(churn == "Unknown"))
+```
+
+There are 3380 `Unknown` observations, that's about a third of our data! I will decide to keep these values, as these observations only appear in predictors `education_level`, `marital_status`, and `income_category`. Besides, I do not believe these variables will have a major impact in our prediction modeling compared to our other more significant variables. Plus, since we are modeling churn, it is important to have as many observations as we can, as our data is likely unbalanced.
+
+Now, we want to factorize our categorical variables in order to correctly implement our statistical modeling.
+
+```{r, class.source = 'fold-show'}
+
+churn <- churn %>%
+  mutate(attrition_flag = factor(
+    attrition_flag, levels = c("Existing Customer", "Attrited Customer")), 
+         gender = factor(gender, levels = c("M","F")),
+    education_level = factor(education_level, levels = c("Uneducated","High School","College","Graduate","Post-Graduate","Doctorate", "Unknown")),
+    marital_status = factor(marital_status, levels = c("Single","Married","Divorced", "Unknown")), 
+    income_category = replace(income_category, income_category == "Less than $40K", "<$40K"),
+    income_category = replace(income_category, income_category == "$120K +", ">$120K"),
+    income_category = factor(income_category, levels = c("<$40K", "$40K - $60K", "$60K - $80K", "$80K - $120K", ">$120K", "Unknown")),
+# Factorize card category
+    card_category = factor(card_category, levels = c("Blue","Silver","Gold","Platinum")))
+
+
+ 
+
+```
+
+Let's display the internal structure of the data to ensure the required predictors are factors.
+
+```{r}
+str(churn)
+```
+
+Great! Let's take a look at the dimensions of our data once more:
+
+```{r}
+# Check number of observations and variables
+dim(churn)
+
+
+```
+
+
+We will be working with 10127 observations and 20 variables. Let's now take a deep dive into our data with our EDA!
+
+
+## Exploratory Data Analysis Visualization
+
+With our cleansed data, we can now build a machine learning model. However, before we proceed, it is important to visualize our data in order to make sense of the it. This will involve developing visualizations of the data and analyzing key variables as well as their relationships.
+
+### Proportion of Existing and Attrited Customers
+
+To start off our EDA, we will check to see the proportion of existing customers and customers who have churned, of the bank's credit card services. We will do this by creating a bar chart of our outcome variable, `attrition_flag`. Since we are working with churn data, I assume that there will be a considerably small portion of customers who have churned.
+
+```{r, class.source = 'fold-hide'}
+# Bar chart of outcome variable
+churn %>% 
+  ggplot(aes(x = attrition_flag)) +
+  geom_bar(fill = "#6DD6B1") +
+  labs(x = "Attrition Flag", y = "Count", title = "Attrition Flag Bar Plot")
+
+```
+
+As one can see, the outcome variable, `attrition_flag`, is highly imbalanced. Observe the skewed class proportions exemplified by the graph. Only a small percentage of customers have churned as expected.
+
+This is important to keep in mind when we develop our machine learning model later. We might need to use different performance metrics for our imbalanced data, perhaps `roc_auc` instead of `accuracy`. We might also need to try a couple data pre-processing techniques that can deal with this situation, such as up-sampling.
+
+### Correlation Plot
+
+Now, let's create a correlation heat map of our numeric variables in order to see their relationships.
+
+```{r, class.source = 'fold-hide'}
+# Only include numerical values
+churn_num <- churn %>%
+  select_if(is.numeric)
+
+# Calculate the correlation of each numeric variable
+churn_corr <- cor(churn_num)
+
+# Correlation plot
+churn_corr_plot <- corrplot(churn_corr)
+
+
+
+```
+
+Despite the large amount of numerical predictors in our data, it is very surprising to see such little correlation between most of the predictor variables. Although upon further glance at our numerical predictors, the correlation heat map does make sense. For example, it wouldn't make sense for `customer_age` and `total_revolving_bal` to have any correlation with each other, since one shouldn't affect the other. Although, there is some correlation between our variables. For instance, we see  predictors `customer_age` and `months_on_book` to be strongly positively correlated with each other, as it wouldn't make sense otherwise. This is similar to the `avg_open_to_buy` and `credit_limit` predictors. The average open to buy is the average of the difference between the assigned credit limit and the customer's account balance, hence it is logical for both variables to be positively correlated with each other. 
+
+Furthermore, predictor variables such `avg_utilization_ratio` and `credit_limit` are negatively correlated with each other since the smaller your credit limit is, the higher the utilization ratio is when making a purchase with the card. 
+
+We can also see that there are a handful of predictors with very small correlations with each other as shown by the graph. However these correlations are incredibly small, and are hardly related to each other. To illustrate, observe that `total_trans_ct` and `total_relationship_count` from the correlation plot have a weak negative correlation with each other. 
+
+For the rest of this section, we will be creating visualization plots for our significant predictors in order to analyze their relationship with our outcome variable, `attrition_flag`.
+
+
+### Customer Age
+
+First, let's take a look at the distribution of the customer's age (which is our predictor, `customer_age`). As a bank company, it is important that we observe the customer's demographics, and see who has stayed and left our credit card services. 
+
+```{r, class.source = 'fold-hide'}
+# Distribution of customer age
+churn %>% 
+  ggplot(aes(customer_age)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 95) +
+  # I'll be using these colors for our other graphs to make them look more vibrant!
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(x = "Customer Age", y = "Count", title = "Distribution of Customer Age", subtitle = "with Attrition Flag")
+
+
+```
+
+
+We can see that the distribution of customer ages in our dataset follows a normal distribution, with mean age of about 46 years. The same holds when observing based on the attrition flag, meaning that the mean age of existing and attrited customers is around 46 years. 
+
+
+
+### Gender
+
+Let's check the proportion of customer genders.
+
+```{r, class.source = 'fold-hide'}
+ggplot(churn, aes(gender)) +
+  geom_bar(aes(fill = attrition_flag), color = "black") +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  labs(x = "Gender", y = "Count", title = "Proportion of Genders", subtitle = "with Attrition Flag")
+
+
+```
+
+Overall, the dataset is almost evenly distributed amongst males and females, as the proportion of customers by gender are nearly comparable. There are a bit more female customers than male customers in the entire dataset. We can also see that there are slightly more attrited females than attrited males. However, as mentioned, these differences are not considerable and therefore gender does not have too significant of an affect on customer churn status. We'll still include it in our model though.
+
+### Dependent Count
+
+Now, we will take a look at the dependent count of our customers.
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(dependent_count)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 16, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(x = "Dependent Count", y = "Count", title = "Histogram of Dependent Count", subtitle = "with Attrition Flag")
+
+
+
+```
+
+It's interesting to see that less customers churn past 2 dependents. As a result, the distribution of dependent counts has a slight right skew. Perhaps a higher number of dependents would mean higher expenditures, which would make the customer more likely to stay with the bank's credit card services as they rely on it more. Furthermore, a majority of the customers have between 2 or 3 dependents, and those with that amount tend to churn the most according to the histogram. This may not provide a lot of information, but right now we are interested in gathering demographic information of the customers. 
+
+
+
+### Education Level
+
+I don't really see how education level plays a part in whether a customer is going to churn or not. Nonetheless, knowing the demographics of customers can help the bank understand the characteristics of the people who use their credit card services. Here, we filter out the `Unknown` observation, as we can't draw any conclusions from it.
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  # Filter out Unknown observation as it does not provide information
+  filter(education_level != "Unknown") %>%
+  ggplot(aes(education_level)) + 
+  geom_bar(aes(fill = attrition_flag), width = 0.25, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Education Level", y = "Count", title = "Bar Chart Customer Education Level", subtitle = "with Attrition Flag") +
+  # Make it more readible
+  coord_flip()
+
+```
+
+Quite diverse education levels we've got here! It appears that graduate students tend to make up the majority of the bank's clients, but are also the ones who churn the most. I'm quite surprised by this observation, it makes me wonder whether this particular bank provides additional benefits or services for those with a graduate education level or higher? Unfortunately this is just speculation, as we have no access to this kind of information. In general, a majority of the customers have a formal education level, with a large amount of those with a higher level of education (graduate and over). 
+
+I plan to implement `education_level` in my bivariate plots shown further below in order to see if it has some true relation with `attrition_flag`.
+
+
+### Marital Status
+
+We will check the marital status of our customers. Note that in this case, "single" means never legally married, not to be confused with single after a divorce, which is different in terms of marital status.
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  # Filter out Unknown observations as it does not provide information
+  filter(marital_status != "Unknown") %>%
+  ggplot(aes(marital_status)) + 
+  geom_bar(aes(fill = attrition_flag), width = 0.25, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(x = "Marital Status", y = "Count", title = "Bar Chart of Customers' Marital Status", subtitle = "with Attrition Flag") 
+
+```
+
+Notice that almost half of the customers in the dataset are married. Interestingly enough, there are also a large majority of single customers, despite the average customer having 2 or 3 dependents. 
+
+
+### Income Category
+
+This is the last demographic variable we will be looking at. The income category (annual) is a key feature for our model. Income is directly correlated with credit limit (among other things such as debt), and I am presuming it will also have an affect on the transaction amount and average utilization ratio of the customers' cards, which we will be looking at soon. 
+
+First, let's see the proportions of the income category
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  # Filter out Unknown observations as it does not provide any information
+  filter(income_category != "Unknown") %>%
+  ggplot(aes(income_category)) + 
+  geom_bar(aes(fill = attrition_flag), width = 0.25, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(x = "Income Category", y = "Count", title = "Bar Chart of Customer Education Level", subtitle = "with Attrition Flag") +
+  # Make it more readible
+  coord_flip()
+
+
+```
+
+A majority of the customers have an income less than $\$40,000$, with income category between $\$40,000$ and $\$80,000$ being the second highest. Furthermore, the lowest income category contains the highest number of churners. 
+
+Now, let's see the proportion of each income category by education level. We will also wrap the attrition flag to check their relationship with our outcome variable. Given that the majority of customers are in the lowest income category, I wouldn't be surprised if this proportion is the largest across all education levels.
+
+```{r}
+churn %>% 
+  filter(income_category != "Unknown" & education_level != "Unknown") %>%
+  ggplot(aes(education_level)) +
+  geom_bar(aes(fill = income_category), color = "black") +
+  facet_wrap(~attrition_flag) +
+  coord_flip() +
+  guides(fill = guide_legend(title = "Income Category")) + 
+  labs(x = "Education Level", y = "Count", title = "Education Level by Income Category") +
+  scale_fill_brewer(palette = "BuGn")
+```
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  # Filter out Unknown observations
+  filter(education_level != "Unknown" & income_category != "Unknown") %>%
+  ggplot(aes(income_category)) +
+  geom_bar(aes(fill = attrition_flag), color = "black", width = 1) +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  facet_wrap(~education_level, scales = "free_y") +
+  coord_flip() +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Income Category", y = "Count", title = "Number of Attrited and Non-Attrited Customers with Income Category by Education Level", subtitle = "with Attrition Flag") +
+  # y-axis and title are squished
+  theme(title = element_text(size = 9), axis.text.x = element_text(size = 8), axis.text.y = element_text(size = 6))
+
+```
+
+As expected, a majority of customers are in the lowest income category spread across education levels. Most of them have a graduate level education and make less than $\$40,000$. These are also the customers who also tend to churn the most according to the bar graphs. Furthermore, the distributions are approximately the same across education levels. This leads me to believe the education level doesn't play much of an influence in whether or not a customer a churn. As a result, `education_level` will not be included in my model.
+
+In summary of our demographic information, the majority of our customers are around 46 years of age, have a formal education, have between 2 to 3 dependents, make less than $\$40,000$ annually, and are married. 
+
+
+### Card Category
+
+The bank provides four different types of credit cards: blue, silver, gold, and platinum credit cards. Information of these cards and what benefits each one provides are not described unfortunately, but given their names, I'd assume they're ordered by the amount of benefits they provide, with platinum being the best. Nonetheless, let us see if we can still draw some conclusions based on our visual analysis of the different cards. 
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(card_category)) + 
+  geom_bar(aes(fill = attrition_flag), width = 0.25, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(x = "Card Category", y = "Count", title = "Amount of Customers in Each Card Category", subtitle = "with Attrition Flag") 
+```
+
+About 90% of customers own the blue credit card! These are also among the highest group of customers who have churned. 
+
+
+Let's see what this statistic looks like spread across different income categories. With 90% of customers holding a blue credit card, it's obvious that the blue card category will be the highest among the different income categories. However, I'm curious to see who has the bought the other card types.
+
+```{r, class.source = 'fold-hide'}
+churn %>%
+  filter(income_category != "Unknown") %>%
+  ggplot(aes(card_category)) +
+  geom_bar(aes(fill = attrition_flag), width = 1, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  facet_wrap(~income_category, scales = "free_x") +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Card Category", y = "Count", title = "Number of Existing and Attrited Customers with Card Category", subtitle = "by Income Category") +
+  # y-axis is squished
+  theme(title = element_text(size=8), axis.text.x = element_text(size = 8), axis.text.y = element_text(size = 6))
+
+```
+
+Again, it's not too surprising seeing the blue card as the most popular card type across different income categories. However, it makes me wonder why it is the most popular. We only see a minuscule amount of customers who have the other card types, even in the higher income categories! Of course there are different factors for this observation that we can write a whole article about. This can range from credit score, payment history, or how long they have been with the bank, among other things. The blue card just might be the easiest one to apply for. However, we are not given this information, hence we cannot further speculate.  
+
+
+
+
+### Months on Book
+
+Now, we start getting in the more quantitative side of our EDA!
+
+Let's plot the distribution of the number of months a customer has stayed with the bank's credit card services.
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(months_on_book)) + 
+  geom_histogram(aes(fill = attrition_flag),bins = 95, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(x = "Months on Book", y = "Count", title = "Distribution of Months on Book", subtitle = "with Attrition Flag")
+
+
+```
+
+Whoa! There is a huge spike at 36 months! So, on average, customers have stayed with the bank for 3 years! As for the spike itself, this may have occurred as 3 years is a rounded figure, hence customers were willing to end relations with the bank at 36 months. Either that, or some event occurred in the time period that we're unaware of, such as a massive ad campaign. Nonetheless, with a huge spike like that, I won't be including `months_on_book` in our models.
+
+### Total Relationship Count
+
+The `total_relationship_count` basically counts the number of products a customer owns from the bank, such as cards, bank accounts, and other similar products.
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(total_relationship_count)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 11, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(x = "Total Relationship Count", y = "Count", title = "Distribution of Total Relationship Count", subtitle =  "with Attrition Flag")
+
+
+```
+
+
+From the histogram, we see that most customers own 3 or more products from the bank. Customers with 3 or less products are more likely to churn than those who own more than 3 products. This is because customers who own more products have likely decided to stay with the bank's credit card services for their products, instead of looking for others services. In other words, those who own the most products have established themselves with the bank. Let's compute the median in order to get a better idea of this.
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(total_relationship_count, attrition_flag, color = attrition_flag)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 8, outlier.size = 4) +
+  coord_flip() +
+  guides(color = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Total Relationship Count", y = "Attrition Flag", title = "Total Relationship Count Distribution", subtitle =  "with Attrition Flag")
+
+```
+
+Notice that the red boxplot above is right-skewed, meaning that there are more existing customers as the total relationship count increases. Again, this makes sense because those who own the most products from the bank have already established they wanted to stay. 
+
+
+### Months Inactive for the Past 12 Months
+
+In this case, an inactive customer means that they are not actively making purchases with their card and have not used their account in some time. 
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(months_inactive_12_mon)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 7, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Months Inactive", y = "Count", title = "Distribution of Months Inactive", subtitle =  "with Attrition Flag")
+
+
+```
+
+Most customers seem to have between 1 to 3 months of inactivity. Those with 3 months of inactivity churn the most. Perhaps the bank should try contacting these inactive customers in order to recapture them, and make them feel as if they weren't forgotten! They can also contact them to ask how they could approve their services!
+
+
+
+### Average Utilization Ratio 
+
+Here, we'll be looking at how much customers are using their cards. In other words, we'll be looking at their average utilization ratios. Let's hope the majority of our customers are good with their finances and that they use the 30% rule!
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(avg_utilization_ratio)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 25, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Average Utilization Ratio", y = "Count", title = "Distribution of Average Utilization Ratio", subtitle = "with Attrition Flag")
+
+
+```
+
+Yikes! This is a right-skewed distribution, with zero being the peak! This means that 2500 customers, on average, never use their card!
+
+Let's take a look at how the average utilization ratio relates to the total revolving balance of the customers' cards. In this case we will check the correlations by each card type. 
+
+```{r, class.source = 'fold-hide', message=FALSE}
+churn %>% 
+  filter(income_category!= "Unknown") %>%
+  ggplot(aes(avg_utilization_ratio, total_revolving_bal)) +
+  # Overplotting
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "gam", se = FALSE, color = "red", linewidth = 2.0) +
+  facet_wrap(~card_category, scales = "free_x") +
+  labs(x = "Average Utilization Ratio", y = "Total Revolving Balance", title = "Average Utilization Ratio vs. Total Revolving Balance", subtitle =  "by Card Type") 
+
+```
+
+Observe that there is a positive correlation between `average_utilization_ratio` and `total_revolving_bal` in each card category. This tells us that the more customers use their cards, the higher the unpaid amount in their card's next billing cycle. Additionally, we see that customers who own a card other than the blue card type tend to have a much lower average utilization ratio.
+
+
+Next, let's compute the median average utilization ratio based off each income category, by card type.
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  filter(education_level != "Unknown" & income_category != "Unknown") %>% 
+  ggplot(aes(reorder(income_category, avg_utilization_ratio), avg_utilization_ratio)) +
+  geom_boxplot(varwidth = TRUE) + 
+  coord_flip() +
+  facet_wrap(~card_category, scales = "free", ncol = 2) +
+  labs(
+    x = "Income Category",
+    y = "Average Utilization Ratio",
+    title = "Distribution of Average Utilization Ratio per Income Category",
+    subtitle = "Card Type"
+  )
+
+
+```
+
+Across each card type, the customers in the lowest income category have the largest average utilization ratio. Even more notable, the distributions across income level vary, as customers with higher levels of income tend to use their card less. 
+
+
+### Credit Limit
+
+Let's take a look at the customers' assigned credit limits for their cards.
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(credit_limit)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 80, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Credit Limit", y = "Count", title = "Distribution of Credit Limit", subtitle =  "with Attrition Flag")
+
+
+```
+
+It's interesting to see the large amount of outliers at the end of our right-skewed distribution. Why is it that there is a notable proportion of customers with a credit limit of near $\$35,000$? My assumption is that most of the customers with this large of a credit limit, are the ones associated with a higher income. We will check to see if my assumption is true, but first, let's compute the median credit limit.
+
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(credit_limit, attrition_flag, color = attrition_flag)) +
+  geom_boxplot() +
+  coord_flip() +
+  guides(color = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Credit Limit", y = "Attrition Flag", title = "Distribution of Credit Limit", subtitle =  "with Attrition Flag")
+
+```
+
+For both existing and attrited customers, the mean credit limit is almost $\$5,000$. However, existing customers seem to have a higher credit limit than attrited, although the difference is minuscule. 
+
+Now, let's test my assumption that the high credit limit outliers are caused by customers in the higher income categories.
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  filter(income_category != "Unknown") %>%
+  ggplot(aes(fill = attrition_flag, credit_limit)) +
+  geom_histogram(bins = 30, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  facet_wrap(~income_category, scales = "free_x") +
+  guides(fill = guide_legend(title = "Attrition Flag")) +
+  labs(
+    x = "Credit Limit", y = "Count", title = "Histogram of Credit Limit by Income Category", subtitle = "with Attrition Flag"
+  )
+```
+
+As we can see, for the first three income categories, the distributions are right-skewed, but once we reach the higher income categories, the distributions change, and are now skewed left . There is a considerable amount of people in the higher income categories with a very large credit that make up the outliers seen in our first credit limit graph. This makes sense because people with higher incomes tend to have good payment histories and tend to pay off their debt, so the bank would trust them more. Thus, our assumption is correct!
+
+We'll now perform an analysis between credit limit and the average utilization ratio. From the correlation plot we made earlier, we saw that there was a negative correlation between the two variables. Let's see what this looks like across the different card types.
+
+
+```{r, class.source = 'fold-hide', message=FALSE}
+churn %>% 
+  filter(income_category!= "Unknown") %>%
+  ggplot(aes(avg_utilization_ratio, credit_limit)) +
+  # Overplotting
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "gam", se = FALSE, color = "red", linewidth = 2.0) +
+  facet_wrap(~card_category, scales = "free_x") +
+  labs(x = "Average Utilization Ratio", y = "Credit Limit", title = "Average Utilization Ratio vs. Credit Limit, by Card Category") 
+```
+
+There seems to be a negative correlation between `credit_limit` and `average_utilization_ratio` in each card type. Therefore, customers with lower credit limits tend to use their card more across the different card categories. 
+
+
+### Total Transaction Amount
+
+The `total_trans_amt` predictor measures the dollar amount of customer transactions in the past 12 months.
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(total_trans_amt)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 80, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Total Transaction Amount", y = "Count", title = "Distribution of Total Transaction Amount", subtitle =  "with Attrition Flag")
+
+
+```
+
+
+Observe that `total_trans_amt` displays a multimodal distribution for existing customers, which means we have some underlying groups in our data. On the contrary, `total_trans_amt` displays a right-skewed distribution for attrited customers. Therefore, we can say that existing customers spent more in the past 12 months than attrited customers. Let's get a clearer look at this with a boxplot.
+
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(total_trans_amt, attrition_flag, color = attrition_flag)) +
+  geom_boxplot() +
+  coord_flip() +
+  guides(color = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Total Transaction Amount", y = "Attrition Flag", title = "Distribution of Total Transaction Amount", subtitle =  "with Attrition Flag")
+
+```
+
+Let's try and cluster our data to see if we can explain this multimodal distribution.
+
+I'm going to assume that our underlying groups are composed of customers who have recently joined the bank, and customers who have stayed with the bank for a while. First, I will create a scatter plot describing the relationship between `total_trans_ct` and `total_trans_amt`, and categorize the correlations by the newer customers and customers who have been associated with the bank for a longer time. From the codebook, `total_trans_ct` is basically the transaction count of a customer in the past 12 months. Obviously, the correlation between the two variables will be positive, but we might find some clusters in the data. 
+
+We will categorize the newer customers as customers who have been associated with the bank for 2 or less years. We will plot both the newer and older customers.
+
+```{r, class.source = 'fold-hide', message = FALSE}
+# We'll display the old customer and new customer plots in the same graphing space
+churn %>% 
+  ggplot(aes(total_trans_ct,total_trans_amt, color = attrition_flag)) +
+  geom_point(alpha = 0.5, show.legend = TRUE) +
+  guides(color = guide_legend(title = "Attrition Flag")) + 
+  # Separate between new and old customers
+  # New customers have been with the bank for 2 or less years (<=24 months)
+  facet_wrap(~months_on_book <= 24, labeller = as_labeller(c(`FALSE` = "Old Customers", `TRUE` = "New Customers"))) +
+  labs(x = "Total Transaction Count", y = "Total Transaction Amount", title = "Old Customers vs. New Customers", subtitle = "by Attrition Flag") +
+  theme(title = element_text(size = 10)) 
+
+```
+
+Notice the 3 clusters in the both plots above. The lower group of clusters are the largest, and represents the two peaks in the `total_trans_amt` distribution. Older customers churned more, which explains the singular peak for the `total_trans_amt` attrited customer distribution.
+
+By comparing the two cluster graphs, we also see that most newer customers tend to fall in the lower cluster, and less in the higher clusters. This means that newer customers are spending less than older customers. Based on this observation, we can safely say that the distribution of `total_trans_amt` is explained by the two underlying groups, which are the newer customers, and the customers who have been acquainted with the bank for more than 2 years. Looking back at the distribution for existing customers, the newer customers would represent the lower peak, and the older customers would represent the higher peak. 
+
+
+
+
+
+### Total Revolving Balance
+
+The total revolving balance is the sum of the unpaid amount that carries off to the customer's next billing cycle. This statistic tells us the amount of customers who don't pay their credit card bill on time.  
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(total_revolving_bal)) + 
+  geom_histogram(aes(fill = attrition_flag), bins = 80, color = "black") +
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  guides(fill = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Total Revolving Balance", y = "Count", title = "Distribution of Total Revolving Balance", subtitle = "with Attrition Flag")
+
+
+```
+
+The total revolving balance has a large spike at 0, but is otherwise distributed at around 1500. Those with 0 revolving balance also seem to churn the most. Let's obtain a clearer visual of the distribution with a boxplot.
+
+
+
+```{r, class.source = 'fold-hide'}
+churn %>% 
+  ggplot(aes(total_revolving_bal, attrition_flag, color = attrition_flag)) +
+  geom_boxplot() +
+  coord_flip() +
+  guides(color = guide_legend(title = "Attrition Flag")) + 
+  labs(x = "Total Revolving Balance", y = "Attrition Flag", title = "Distribution of Total Revolving Balance", subtitle = "with Attrition Flag")
+
+```
+
+We have a weirdly shaped boxplot for the attrited customer group, but this makes sense given the high peak at 0. This means that customers with lower revolving balance tend to churn the most. Perhaps increasing the credit limit of these customers is a possible solution, as this would encourage customers to start using their cards more. For existing customers, the total revolving balance is distributed close to $\$1500$. 
+
+Let's take a look at how the total revolving balance relates with credit limit. We'll display each correlation by income category. 
+
+
+```{r, class.source = 'fold-hide', message=FALSE}
+churn %>% 
+  filter(income_category!= "Unknown") %>%
+  ggplot(aes(credit_limit, total_revolving_bal, color = attrition_flag)) +
+  # Overplotting
+  geom_point(alpha = 0.3)+
+  geom_smooth(method = "lm", se = TRUE, color = "purple", linewidth =0.95, level = 0.99, fill = "purple") +
+  facet_wrap(~income_category, scales = "free_x") +
+  guides(color = guide_legend(title = "Attrition Flag")) + 
+  scale_fill_manual(values = c("#2D7496", "#4BBC94")) +
+  labs(x = "Credit Limit", y = "Total Revolving Balance", title = "Credit Limit vs. Total Revolving Balance") 
+
+```
+
+Those in the first three income categories in the plots above tend to have increasing revolving balances and their credit limit gets higher. However, as you go across the income categories, the slope decreases. Once you reach the higher income categories (last 2), the correlations seem to be almost 0, meaning customers in the high income categories tend to have very similar revolving balances no matter what their credit limit is. 
+
+Upon further inspection of the plots, there is a noticeable amount of attrited customers in the "$\le{\$40}$K income category with incredibly low revolving balances, but also really low credit limits. Perhaps this could be an explanation for customer attrition, as attrited customers who were assigned a credit limit most likely churned to another bank for their credit card services, to see if they would be given a higher credit limit. A possible solution to this would be to increase (to some acceptable degree) the credit limit among those in the lower income categories. 
+
+
+# Building Machine Learning Models
+
+We finally get to the bread and butter of our project, which is building our machine learning models! Here, we will be trying our various machine learning techniques while using the same recipe, which we'll get to in a moment. With our extensive exploratory data analysis, we have a general idea of how most of our predictors will impact churn rate. We will be following the subsequent steps for our model building process. It goes as follows:
+
+1. Splitting the data into training and testing sets
+2. Building our recipe 
+3. Implement K-fold cross validation
+4. Model Building
+5. Testing the results of our models
+
+## Preparing Our Models
+
+Before we do any type of model building, we need to set up the necessary data. This involves splitting our data, creating our recipe, and establishing cross validation. Before we get to setting up our models, let's perform a final step in our data clean-up. I plan on implementing `income_category` in my model, so I will remove the `Unknown` observations from the variable, and replace them with missing values that we will later impute. In addition let's encode our outcome variable.
+
+```{r, class.source = 'fold-hide'}
+# Exclude "Unknown" observations, replace them with NA
+churn <- churn %>%
+  mutate(income_category = factor(income_category, levels = c("<$40K", "$40K - $60K", "$60K - $80K", "$80K - $120K", ">$120K")))
+
+# Dummy code outcome variable
+# 0 - Existing Customer
+# 1 - Attrited Customer
+churn <- churn %>%
+  mutate(attrition_flag = ifelse(attrition_flag == "Attrited Customer",1,0), attrition_flag = factor(attrition_flag, levels = c(0,1)))
+```
+
+Let's now continue on to prepare our models!
+
+### Splitting the Dataset
+
+The most essential part for our model preparation is to split our data into training and testing sets. I will be splitting my data 80% training set and 20% testing. This is a commonly used ratio, and for a reason. We have a large enough testing, and our model has a lot to train and learn from. We will also be setting a random seed here so that our training and testing splits are the same each time we re-run the code. It's also a good idea to stratify on our outcome variable, `attrition_flag`, as it is highly imbalanced. This will help ensure that the number of data points in the training set is equivalent to the proportions in the testing set.
+
+```{r, class.source = 'fold-hide'}
+set.seed(1115) # Set seed so the split is the same
+
+churn_split <- initial_split(churn, prop = 0.80, strata = attrition_flag)  # Split the data, stratifying on the outcome variable
+
+churn_train <- training(churn_split)  # Training set
+churn_test <- testing(churn_split)  # Testing set
+```
+
+Let's check the dimensions of our data to ensure a proper split:
+
+```{r}
+dim(churn_train)
+dim(churn_test)
+```
+
+Both splits contain the appropriate amount of observations. $8101$ is $80\%$ of our full data set, which containd $10127$ observations. 
+
+How about we take it a step further, and let's make sure the ratios between the attrited and existing customers are similar for our split.
+
+```{r, class.source = 'fold-hide'}
+(sum(churn_train$attrition_flag == 1)) / (sum(churn_train$attrition_flag == 0)) # Ratio between attrited and existing customers in the training set
+
+(sum(churn_test$attrition_flag == 1)) / (sum(churn_test$attrition_flag == 0))  # Ratio between attrited and existing customers in the testing set
+```
+
+The ratios are almost the same between the training and testing set. That's how we know our data was correctly split!
+
+### Recipe Building
+
+Here, we will be building two recipes; which ones we'll apply will depend on the model. The only difference between the our two recipes is one contains principal component analysis (PCA), and the other does not. In this case, we'll only be using our PCA recipe for logistic regression and discriminant analysis to avoid rank deficiency. The other models we're building don't require PCA, as they reduce dimensionality and deal with collinearity to a degree. 
+
+Looking back at our EDA, we will only be including 14 out of our 19 predictors in the recipe. We'll be excluding variables `months_on_book`, `dependent_count`, `education_level`, `marital_status`, and `contacts_count_12_mon`. In my recipes I plan to use upsampling using SMOTE to deal with the imbalanced data. Details of my data processing is explained in the comments of the folded code below.
+
+
+
+```{r, class.source = 'fold-hide'}
+# Recipe building
+# Recipe 1, with PCA
+recipe_churn <- recipe(attrition_flag ~ customer_age + gender + income_category + total_relationship_count + months_inactive_12_mon + credit_limit + total_revolving_bal + avg_open_to_buy + total_amt_chng_q4_q1 + total_trans_amt + total_trans_ct + total_ct_chng_q4_q1 + avg_utilization_ratio + card_category, data = churn_train) %>%
+  # We only include 14 predictors
+  # Credit limit needed to be logged, as it had a right-skewed distribution
+  # Transaction account also needed to be logged to resemble a roughly normal distribution
+  # We needed to categorize some of our categorical variables, use one-hot encoding
+  # Must scale and center all predictors, as our predictors measure different values
+  # Impute income_category via k-nearest neighbors to remove all nulls
+  # Up-sample using Synthetic Minority Oversampling (SMOTE) to deal with imbalanced data
+  # SMOTE will balance our outcome variable by randomly increasing our minority class, which is attrited customers, by replicating them
+  # This dataset has realistic ratios, so we won't upsample too much; i.e., our minority level will be less than half as many rows as our majority level in SMOTE
+  # We will be applying PCA to our logistic and discriminant models to reduce dimensionality and to have a set of uncorrelated variables
+  # We have several strongly correlated variables in our data processing, so PCA will be useful for this reason too
+  # PCA will also help reduce dimensionality in our one-hot encoded categorical variables
+  step_impute_knn(income_category, impute_with = imp_vars(all_nominal_predictors())) %>%
+  step_log(credit_limit) %>%
+  step_log(total_trans_amt) %>%
+  step_dummy(gender, one_hot = TRUE) %>%
+  step_dummy(card_category, one_hot = TRUE) %>%
+  step_dummy(income_category, one_hot = TRUE) %>%
+  step_smote(attrition_flag, over_ratio = 0.4765) %>%
+  step_scale(all_predictors()) %>%
+  step_center(all_predictors()) %>%
+  step_pca(all_predictors()) 
+
+# Recipe 2, without PCA
+# Same recipe, just without PCA
+# This will be our main recipe, since the other will only be used for logistic and discriminant analysis
+recipe_churn2 <- recipe(attrition_flag ~ customer_age + gender + income_category + total_relationship_count + months_inactive_12_mon + credit_limit + total_revolving_bal + avg_open_to_buy + total_amt_chng_q4_q1 + total_trans_amt + total_trans_ct + total_ct_chng_q4_q1 + avg_utilization_ratio + card_category, data = churn_train) %>%
+  step_impute_knn(income_category, impute_with = imp_vars(all_nominal_predictors())) %>%
+  step_log(credit_limit) %>%
+  step_log(total_trans_amt) %>%
+  step_dummy(gender, one_hot = TRUE) %>%
+  step_dummy(card_category, one_hot = TRUE) %>%
+  step_dummy(income_category, one_hot = TRUE) %>%
+  step_smote(attrition_flag, over_ratio = 0.4765) %>%
+  step_scale(all_predictors()) %>%
+  step_center(all_predictors()) 
+
+```
+
+### K-Fold Cross Validation
+
+To deal with our imbalanced data, we'll be using stratified cross validation on our outcome variable, `attrition_flag`.
+
+```{r, class.source = 'fold-show'}
+set.seed(1115)
+churn_folds <- vfold_cv(churn_train, v = 10, strata = attrition_flag)  # 10-fold CV
+```
+
+
+## Model Building
+
+Finally, we reach the most crucial part of our project which is the model building. I will be using four different machine learning methods using the same recipe we built. Afterwards, I will pick the pick model with the highest `roc_auc` and test it on the testing data set. I will be fitting the following four models, and perform hyperparameter tuning on some of them
+
+* Logistic Regression
+* Ridge Regression
+* Random Forest
+* Boosted Trees
+* Support Vector Machine
+
+The entire algorithms for these models can be viewed in my R-scripts. Here, I'll just be loading the results I've retrieved from my models, as well as showing a few code-snippets to follow along the model building process. 
+
+```{r, class.source = 'fold-hide'}
+load("/Users/reynaldoperez/Downloads/Customer_Attrition_Proj/Log_Discrim_Results.rda")
+load("/Users/reynaldoperez/Downloads/Customer_Attrition_Proj/Ridge_Results.rda")
+load("/Users/reynaldoperez/Downloads/Customer_Attrition_Proj/RF.rda")
+load("/Users/reynaldoperez/Downloads/Customer_Attrition_Proj/XGBoost_Results.rda")
+load("/Users/reynaldoperez/Downloads/Customer_Attrition_Proj/SVM_models.rda")
+```
+
+### Logistic Regression and Discriminant Analysis
+
+We will start off with the simpler classification models that will predict our outcome variable. Here, I plan on implementing a logistic regression model, along with defining models for linear and quadratic discriminant analysis. We will create a workflow and add the recipe with PCA. I then plan on fitting each of these models into our folded data, `churn_folds`.
+
+Let's start off with a simple logistic regression model. Here, we create a specification of the model, and apply it to a workflow, along with our recipe, which contains the data-processing. We then fit the model to the training set. Finally, we calculate the `roc_auc`, which is the probability measure of the receiver operating characteristic curve. Keep in mind, this is our metric for all our models.
+
+```{r, class.source = 'fold-show', eval=FALSE}
+# Specify a logistic regression model
+log_reg <- logistic_reg() %>%
+  set_engine("glm") %>%
+  set_mode("classification")
+
+# Create a workflow
+log_wkflow <- workflow() %>%
+  add_model(log_reg) %>%
+  add_recipe(recipe_churn)
+
+# Fit the model by applying the workflow to the training set
+log_fit <- fit(log_wkflow, churn_train)
+
+# ROC_AUC of model
+log_reg_acc <- augment(log_fit, new_data = churn_train) %>%
+  roc_auc(attrition_flag, estimate = .pred_0)
+```
+
+We also follow these steps when applying models for linear and quadratic discriminant analysis.
+
+```{r, class.source = 'fold-hide', eval = FALSE}
+### Linear Discriminant Analysis
+lda_mod <- discrim_linear() %>%
+  set_mode("classification") %>%
+  set_engine("MASS") 
+
+# Workflow
+lda_wkflow <- workflow() %>%
+  add_model(lda_mod) %>%
+  add_recipe(recipe_churn)
+
+# Fit LDA to training data
+lda_fit <- fit(lda_wkflow, churn_train)
+
+# ROC AUC of model
+lda_acc <- augment(lda_fit, new_data = churn_train) %>%
+  roc_auc(attrition_flag, estimate = .pred_0)
+
+### Quadratic Discriminant Analysis
+qda_mod <- discrim_quad() %>%
+  set_mode("classification") %>%
+  set_engine("MASS")
+
+# Workflow
+qda_wkflow <- workflow() %>%
+  add_model(qda_mod) %>%
+  add_recipe(recipe_churn)
+
+# Fit QDA to training data
+qda_fit <- fit(qda_wkflow, churn_train)
+
+# ROC AUC of model
+qda_acc <- augment(qda_fit, new_data = churn_train) %>%
+  roc_auc(attrition_flag, estimate = .pred_0)
+```
+
+Now, we will compare the performances of our models.
+
+```{r, class.source = 'fold-hide'}
+rocs <- c(log_reg_acc$.estimate, lda_acc$.estimate, qda_acc$.estimate)
+
+models <- c("Logistic Regression", "LDA", "QDA")
+results <- tibble(rocs = rocs, models = models)
+results %>%
+  arrange(-rocs)
+```
+
+Our quadratic discriminant model did the best out of the three. Let's now fit it to the testing data. 
+
+```{r, class.source = 'fold-hide'}
+qda_test <- fit(qda_fit, churn_test)
+predict(qda_test, new_data = churn_test, type = "prob") %>% 
+  bind_cols(churn_test %>% dplyr::select(attrition_flag)) %>% 
+  roc_auc(truth = attrition_flag, estimate = .pred_0)
+```
+
+What if we applied resamples to our models? By applying resamples to all three models, we see that the logistic model is our best performing data of the three (see R script for details). Let's fit this model into the testing set.
+
+```{r, class.source = 'fold-hide'}
+log_test <- fit(log_wkflow, churn_test)
+predict(log_test, new_data = churn_test, type = "prob") %>% 
+  bind_cols(churn_test %>% dplyr::select(attrition_flag)) %>% 
+  roc_auc(truth = attrition_flag, estimate = .pred_0)
+```
+
+We get an `roc_auc` of $0.8248$, which is not much of a difference from our training set. Let's now assess our logistic regression model by looking at its confusion matrix and ROC curve. We'll be using the testing set.
+
+```{r, class.source = 'fold-hide'}
+augment(log_test, new_data = churn_test) %>%
+  conf_mat(truth = attrition_flag, estimate = .pred_class) %>% 
+  autoplot(type = "heatmap")
+```
+
+```{r, class.source = 'fold-hide'}
+augment(log_test, new_data = churn_test) %>%
+  roc_curve(attrition_flag, .pred_0) %>%
+  autoplot()
+```
+
+For churn prediction, this is a surprisingly good model. Based on the confusion matrix, our model is relatively accurate in predicting existing and churned customers, since the Type I and Type II errors are considerably small. Also, the ROC curve looks great, as the curve is upward and on the left side of the graph. Overall, the logistic regression model is our best model thus far.
+
+### Ridge Regression
+
+Now, we will apply a regularization model: ridge regression. To build this model, we will specify a logistic regression model, and set `mixture = 0`, which specifies a ridge regression model. Furthermore, we will be tuning the `penalty` hyperparameter, which represents the total amount of regularization. We added the recipe without PCA, as we will do with the rest of our models from here on. Let's see the plot of our tuned model.
+
+```{r, class.source = 'fold-hide'}
+autoplot(tune_ridge)
+```
+
+It seems that the amount of regularization does not have an affect on the performance metrics until it hits a certain value, where there's a huge drop. The area after the drop is the amount of regularization that doesn't have any meaningful influence on the coefficient estimates.
+
+We can also visualize how the magnitude of the coefficients are being regularized towards zero as penalty increases.
+
+```{r, class.source = 'fold-hide'}
+ridge_final_fit %>%
+  extract_fit_engine() %>%
+  plot(xvar = "lambda")
+```
+
+Now, let's apply our model to the testing set.
+
+```{r, class.source = 'fold-hide'}
+augment(ridge_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0) 
+```
+We seem to have obtained a better estimate for our model than our logistic regression model. We're making progress, but let's try fitting a couple more models.
+
+### Decision Tree
+
+For our decision tree, we tuned the `cost_complexity` parameter. Let's take a look at our graph.
+
+```{r, class.source = 'fold-hide'}
+autoplot(tune_res)
+```
+
+Observe that after a certain value, the accuracy of our decision tree drops dramatically. We will fit the model to our testing set, as we will with all models.
+
+```{r, class.source = 'fold-hide'}
+augment(class_tree_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0)  
+```
+### Random Forest
+
+Now, let's take a look at a random forest model. Just a reminder, we're fitting the second recipe (excluding PCA). For this model, we tune the following parameters in the `ranger` engine:
+
+* `mtry` - number of predictors that will be randomly sampled at each split
+* `min_n` - minimum amount of data points in a node that are required for the node to be further split
+
+We used the default number of `trees` provided by R, which is 500. I planned on tuning `trees`, but I am unfortunately limited by my computational power. Still, this model revealed great results. 
+
+```{r, class.source = 'fold-hide'}
+autoplot(tune_forest)
+```
+
+Observe that as the number of randomly selected predictors increased, the higher the `roc_auc` value. Looking back at this however, it seemed unnecessary to input a large range for the `min_n` tuning parameter. 
+
+What variables have a large impact on whether a customer will churn from the bank? We can take a look at this by looking at a variable importance chart (VIP).
+
+```{r, class.source = 'fold-hide'}
+class_forest_final_fit %>%
+  extract_fit_parsnip() %>%
+  vip(aesthetics = list(fill = "#2D7496", color = "black"))
+```
+
+Notice that predictors `total_trans_ct` and `total_trans_amt` have the largest impact on our outcome variable, `attrition_flag` according to the random forest. In general, the amount of purchases customers are making greatly affect whether or not they will churn. With this importance feature, perhaps the bank can find a way to mitigate customer attrition.
+
+We also notice that out of the models we've fitted so far, the random forest model has the highest accuracy so far:
+
+```{r, class.source = 'fold-hide'}
+augment(class_forest_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0)  
+```
+### Boosted Tree
+
+Similar to the random forest, I set up a boosted tree model with tuning parameters:
+
+* `mtry` - number of predictors that will be randomly sampled at each split
+* `min_n` - minimum amount of data points in a node that are required for the node to be further split
+* `learn_rate` - rate at which the boosting algorithm adapts from iteration-to-iteration
+
+Just like in our random forest model, `trees` is set to a default of 500.
+
+```{r, class.source = 'fold-hide'}
+autoplot(tune_boost)
+```
+
+Just like our random forest model, as the number of randomly selected predictors increases, the model accuracy increases. Also note that as the learning rate goes up, the accuracy of our model decreases on the nodes. 
+
+Following a similar process to our random forest model, we will view a VIP for our boosted tree model
+
+```{r, class.source = 'fold-hide'}
+class_boost_final_fit %>%
+  extract_fit_parsnip() %>%
+  vip(aesthetics = list(fill = "#2D7496", color = "black"))
+
+```
+
+Comparing the VIPs of the random forest and boosted tree models, we observe that predictors `total_trans_ct`, `total_trans_amt`, and `total_revolving_bal` are the top three most impactful variables. However, the VIP for the boosted model considers less impactful variables compared to the VIP of the random forest model, and the order of the variables changed. For example, the boosted tree model considers `total_relationship_count` to have a higher significance than `total_ct_chng_q4_q1`, whereas the random forest model considers the opposite.
+
+Now, let's fit the boosted tree model to the testing set.
+
+```{r, class.source = 'fold-hide'}
+augment(class_boost_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0)  
+```
+Although close, our random forest model remains to be our most accurate model thus far. 
+
+### Support Vector Machine
+
+For our final machine learning model, we will be developing a support vector machine to fit into our data. Such as our previous models, we will be performing hyperparameter tuning to help improve performance.  
+
+For our SVM. we will attempt linear support to help maximize the width of our classes. We will tune the `cost` parameter, which is the cost of predicting a sample within the wrong side of the margin.
+
+```{r, class.source = 'fold-hide'}
+autoplot(tune_svm_lin)
+```
+
+Based on the graph, it doesn't seem like this model will give us a higher accuracy than our previous models. Nonetheless, let's fit it to the testing set.
+
+```{r, class.source = 'fold-hide'}
+augment(svm_linear_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0)
+```
+Although it is a well estimate, it is definitely not one of the best models we have applied.
+
+## Best Model
+
+Now that we have analyzed the results of our models and fit them to the testing set, it's time choose our candidate model! Let's show the accuracies of our models in a single plot. We'll choose the best model based on `roc_auc`.
+
+```{r, class.source = 'fold-hide'}
+log_auc <- augment(log_test, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0) %>%
+  dplyr::select(.estimate)
+
+lda_auc <- lda_acc$.estimate
+
+qda_auc <- qda_acc$.estimate
+  
+ridge_auc <- augment(ridge_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0) %>%
+  dplyr::select(.estimate)
+
+dec_auc <- augment(class_tree_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0)  %>%
+  dplyr::select(.estimate)
+
+rf_auc <- augment(class_forest_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0) %>%
+  dplyr::select(.estimate) 
+
+boost_auc <- augment(class_boost_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0) %>%
+  dplyr::select(.estimate)
+
+svm_auc <- augment(svm_linear_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0) %>%
+  dplyr::select(.estimate)
+
+churn_aucs <- c(log_auc$.estimate, lda_auc, qda_auc, ridge_auc$.estimate, dec_auc$.estimate, rf_auc$.estimate, boost_auc$.estimate, svm_auc$.estimate)
+
+churn_models <- c("Logistic Regression", "LDA", "QDA", "Ridge", "Decision Tree", "Random Forest", "Boosted Tree", "SVM")
+
+churn_res <- tibble(Model = churn_models, ROC_AUC = churn_aucs)
+
+churn_res <- churn_res %>%
+  arrange(-churn_aucs)
+churn_res
+```
+
+Let's now create a visualization of these results.
+
+```{r, class.source = 'fold-hide'}
+ggplot(churn_res, 
+       aes(x = Model, y = ROC_AUC)) + 
+  geom_bar(stat = "identity", width=0.2, fill = "#4BBC94", color = "black") + 
+  labs(title = "Model Performance") + 
+  theme_minimal()
+```
+
+We see that our random forest model performed the best!
+
+
+### Best Model Results
+
+Out of all the machine learning models we've applied, the random forest model performed the best.
+
+```{r, class.source = 'fold-hide'}
+show_best(tune_forest, metric = "roc_auc") %>%
+  dplyr::select(-.estimator) %>%
+  dplyr::slice(1)
+```
+Using the fitted data, we will make predictions on each observation in the testing set. This way, we will be able to see what our model predicts for each observation in the testing data.
+
+
+```{r, class.source = 'fold-hide'}
+churn_predict <- predict(class_forest_final_fit,  # fitting our model to testing data
+                              new_data = churn_test, 
+                              type = "class")
+
+churn_predict_with_actual <- churn_predict %>%
+  bind_cols(churn_test)  # adding the actual values side by side to our predicted values
+
+churn_predict_with_actual
+```
+
+Next, we'll take a look at the ROC curve.
+
+```{r, class.source = 'fold-hide'}
+augment(class_forest_final_fit, new_data = churn_test) %>%
+  roc_curve(attrition_flag, .pred_0) %>%
+  autoplot()
+```
+
+Upon observation, the graph looks great! We want the trajectory of the curve to be up and to the left as possible, almost like a 90-degree sharp turn. The shape of our ROC curve also means that the AUC is close to 1, which is an excellent measure.
+
+Finally, we will take a look at the AUC.
+
+```{r, class.source = 'fold-hide'}
+augment(class_forest_final_fit, new_data = churn_test) %>%
+  roc_auc(truth = attrition_flag, estimate = .pred_0) 
+
+```
+For a churn data set, this is a relatively high ROC AUC. This means our model performed really well. In the real world of statistics, however, we would likely get a much lower accuracy for our model, especially in churn or attrition data sets. Nonetheless, we found a great model for our data set.
+
+# Conclusion
+
+In summary, we managed to achieve a high accuracy in our model despite our data being imbalanced. Of course, in the real world, machine learning models that test churn data won't have as high of accuracy that we managed to obtain. It is actually much harder to model churn realistically, however, this project gave me the chance to experience this, as well as learn various ways to deal with imbalanced data.
+
+In our models we applied a method called synthetic minority oversampling technique, otherwise known as SMOTE. We applied this technique in order to balance our data class. This method allowed us to oversample. However, if I were given the time, I would have also tried undersampling in my models in order to discover which gave the better accuracies.
+
+In the end, after applying various machine learning models, I have found that the random forest model is the best model, as it revealed the highest ROC AUC across all applied models. Given more time, I would have most likely applied additional models to see if any of them would give higher accuracies.
+
+With the exploratory data analysis we performed and machine learning methods we have applied, the bank's credit card services now has an idea of what factors are causing customers to leave their services. This way, they can develop strategies to prevent attrition. 
+
+Overall, I've learned quite a lot from this project, and I hope to take on more data to learn and apply my machine learning knowledge to!
+
+
+
+
+<center>
+![](/Users/reynaldoperez/Downloads/Customer_Attrition_Proj/image2.jpeg) 
+</center>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
